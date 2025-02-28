@@ -1,0 +1,841 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Autonomous Drone Swarm Simulation</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background-color: #f5f5f5;
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+        .container {
+            display: flex;
+            width: 100%;
+            max-width: 1200px;
+            gap: 20px;
+        }
+        #simulation-container {
+            position: relative;
+            border: 2px solid #333;
+            background-color: #fff;
+            flex: 1;
+        }
+        #simulation {
+            width: 100%;
+            height: 500px;
+            background-color: #f0f0f0;
+            cursor: default;
+        }
+        .cursor-move {
+            cursor: move;
+        }
+        .controls {
+            width: 300px;
+            padding: 15px;
+            background-color: #e0e0e0;
+            border-radius: 5px;
+        }
+        .control-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input[type="range"], input[type="number"] {
+            width: 100%;
+        }
+        button {
+            padding: 8px 15px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-right: 10px;
+            margin-bottom: 10px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        .status {
+            margin-top: 10px;
+            font-style: italic;
+        }
+        .copyright {
+            text-align: center;
+            margin-top: 20px;
+            font-size: 12px;
+            color: #666;
+        }
+        .drone {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            background-color: blue;
+            border-radius: 50%;
+            transition: transform 0.1s linear;
+        }
+        .obstacle {
+            position: absolute;
+            background-color: #444;
+            border-radius: 5px;
+        }
+        .goal {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            background-color: green;
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+        }
+        .start-area {
+            position: absolute;
+            width: 40px;
+            height: 40px;
+            background-color: rgba(0, 0, 255, 0.2);
+            border: 1px dashed blue;
+            transform: translate(-50%, -50%);
+        }
+        .value-display {
+            display: inline-block;
+            width: 40px;
+            text-align: right;
+            margin-left: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Autonomous Drone Swarm Simulation</h1>
+    <div class="container">
+        <div id="simulation-container">
+            <canvas id="simulation"></canvas>
+        </div>
+        <div class="controls">
+            <div class="control-group">
+                <label for="num-drones">Number of Drones: <span id="num-drones-value" class="value-display">10</span></label>
+                <input type="range" id="num-drones" min="1" max="50" value="10">
+            </div>
+            
+            <div class="control-group">
+                <label for="min-distance">Minimum Distance Between Drones: <span id="min-distance-value" class="value-display">30</span></label>
+                <input type="range" id="min-distance" min="10" max="100" value="30">
+            </div>
+            
+            <div class="control-group">
+                <label for="repulsion-strength">Repulsion Strength: <span id="repulsion-strength-value" class="value-display">1000</span></label>
+                <input type="range" id="repulsion-strength" min="100" max="5000" value="1000">
+            </div>
+            
+            <div class="control-group">
+                <label for="attraction-strength">Goal Attraction Strength: <span id="attraction-strength-value" class="value-display">1.5</span></label>
+                <input type="range" id="attraction-strength" min="0.1" max="5" step="0.1" value="1.5">
+            </div>
+            
+            <div class="control-group">
+                <label for="obstacle-repulsion">Obstacle Repulsion Strength: <span id="obstacle-repulsion-value" class="value-display">2000</span></label>
+                <input type="range" id="obstacle-repulsion" min="500" max="10000" value="2000">
+            </div>
+            
+            <div class="control-group">
+                <label for="max-speed">Max Drone Speed: <span id="max-speed-value" class="value-display">2</span></label>
+                <input type="range" id="max-speed" min="0.5" max="5" step="0.1" value="2">
+            </div>
+            
+            <div class="control-group">
+                <label for="num-obstacles">Number of Obstacles: <span id="num-obstacles-value" class="value-display">5</span></label>
+                <input type="range" id="num-obstacles" min="0" max="20" value="5">
+            </div>
+            
+            <div class="control-group">
+                <label for="path-length">Path History Length: <span id="path-length-value" class="value-display">50</span></label>
+                <input type="range" id="path-length" min="10" max="200" value="50">
+            </div>
+            
+            <div class="control-group">
+                <label for="path-opacity">Path Opacity: <span id="path-opacity-value" class="value-display">0.5</span></label>
+                <input type="range" id="path-opacity" min="0.1" max="1" step="0.1" value="0.5">
+            </div>
+            
+            <div>
+                <button id="move-goal-btn">Reposition Goal</button>
+                <button id="move-obstacles-btn">Move Obstacles</button>
+                <button id="start-btn">Start Simulation</button>
+                <button id="reset-btn">Reset</button>
+                <button id="randomize-btn">Randomize Obstacles</button>
+                <button id="clear-paths-btn">Clear Paths</button>
+            </div>
+            
+            <div class="status" id="status">Ready to start</div>
+        </div>
+    </div>
+    <div class="copyright">© 2025 @HarisKhan - Autonomous Drone Swarm Simulation</div>
+
+    <script>
+        // Simulation variables
+        let canvas, ctx;
+        let drones = [];
+        let obstacles = [];
+        let goal = { x: 0, y: 0 };
+        let startArea = { x: 0, y: 0 };
+        let isRunning = false;
+        let animationId = null;
+        let isRepositioningGoal = false;
+        let isMovingObstacles = false;
+        let selectedObstacle = null;
+        let dragOffset = { x: 0, y: 0 };
+        
+        // Parameters
+        let numDrones = 10;
+        let minDistance = 30;
+        let repulsionStrength = 1000;
+        let attractionStrength = 1.5;
+        let obstacleRepulsion = 2000;
+        let maxSpeed = 2;
+        let numObstacles = 5;
+        let pathHistoryLength = 50;
+        let pathOpacity = 0.5;
+        
+        // DOM Elements
+        const startBtn = document.getElementById('start-btn');
+        const resetBtn = document.getElementById('reset-btn');
+        const randomizeBtn = document.getElementById('randomize-btn');
+        const clearPathsBtn = document.getElementById('clear-paths-btn');
+        const moveGoalBtn = document.getElementById('move-goal-btn');
+        const moveObstaclesBtn = document.getElementById('move-obstacles-btn');
+        const statusEl = document.getElementById('status');
+        
+        // Setup ranges and their value displays
+        setupRangeControl('num-drones', value => {
+            numDrones = parseInt(value);
+            reset();
+        });
+        
+        setupRangeControl('min-distance', value => {
+            minDistance = parseInt(value);
+        });
+        
+        setupRangeControl('repulsion-strength', value => {
+            repulsionStrength = parseInt(value);
+        });
+        
+        setupRangeControl('attraction-strength', value => {
+            attractionStrength = parseFloat(value);
+        });
+        
+        setupRangeControl('obstacle-repulsion', value => {
+            obstacleRepulsion = parseInt(value);
+        });
+        
+        setupRangeControl('max-speed', value => {
+            maxSpeed = parseFloat(value);
+        });
+        
+        setupRangeControl('num-obstacles', value => {
+            numObstacles = parseInt(value);
+            generateObstacles();
+            draw();
+        });
+        
+        setupRangeControl('path-length', value => {
+            pathHistoryLength = parseInt(value);
+            // Adjust existing path histories
+            for (let drone of drones) {
+                if (drone.pathHistory.length > pathHistoryLength) {
+                    drone.pathHistory = drone.pathHistory.slice(drone.pathHistory.length - pathHistoryLength);
+                }
+            }
+        });
+        
+        setupRangeControl('path-opacity', value => {
+            pathOpacity = parseFloat(value);
+        });
+        
+        // Initialize the simulation
+        window.onload = function() {
+            canvas = document.getElementById('simulation');
+            ctx = canvas.getContext('2d');
+            resizeCanvas();
+            
+            // Set goal position (top right area)
+            goal.x = canvas.width * 0.8;
+            goal.y = canvas.height * 0.2;
+            
+            // Set start area (bottom left)
+            startArea.x = canvas.width * 0.2;
+            startArea.y = canvas.height * 0.8;
+            
+            // Generate obstacles and drones
+            generateObstacles();
+            reset();
+            
+            // Draw the initial state
+            draw();
+            
+            // Event listeners
+            startBtn.addEventListener('click', toggleSimulation);
+            resetBtn.addEventListener('click', reset);
+            randomizeBtn.addEventListener('click', function() {
+                generateObstacles();
+                draw();
+            });
+            clearPathsBtn.addEventListener('click', clearPaths);
+            moveGoalBtn.addEventListener('click', toggleGoalRepositioning);
+            moveObstaclesBtn.addEventListener('click', toggleObstacleMovement);
+            
+            // Canvas mouse events for goal repositioning and obstacle movement
+            canvas.addEventListener('mousedown', handleCanvasMouseDown);
+            canvas.addEventListener('mousemove', handleCanvasMouseMove);
+            canvas.addEventListener('mouseup', handleCanvasMouseUp);
+            canvas.addEventListener('mouseleave', handleCanvasMouseLeave);
+            
+            window.addEventListener('resize', function() {
+                resizeCanvas();
+                // Recalculate positions based on new canvas size
+                goal.x = canvas.width * 0.8;
+                goal.y = canvas.height * 0.2;
+                startArea.x = canvas.width * 0.2;
+                startArea.y = canvas.height * 0.8;
+                generateObstacles();
+                reset();
+            });
+        };
+        
+        function resizeCanvas() {
+            const container = document.getElementById('simulation-container');
+            canvas.width = container.clientWidth;
+            canvas.height = 500;
+        }
+        
+        function setupRangeControl(id, callback) {
+            const range = document.getElementById(id);
+            const valueDisplay = document.getElementById(`${id}-value`);
+            
+            valueDisplay.textContent = range.value;
+            
+            range.addEventListener('input', function() {
+                valueDisplay.textContent = this.value;
+                callback(this.value);
+            });
+        }
+        
+        function toggleGoalRepositioning() {
+            isRepositioningGoal = !isRepositioningGoal;
+            
+            if (isRepositioningGoal) {
+                // Exit obstacle movement mode if active
+                if (isMovingObstacles) {
+                    toggleObstacleMovement();
+                }
+                
+                moveGoalBtn.textContent = "Finish Positioning";
+                moveGoalBtn.style.backgroundColor = "#FF9800";
+                canvas.classList.add('cursor-move');
+                
+                // Pause simulation if running
+                if (isRunning) {
+                    toggleSimulation();
+                }
+                
+                statusEl.textContent = "Click anywhere to place the goal";
+            } else {
+                moveGoalBtn.textContent = "Reposition Goal";
+                moveGoalBtn.style.backgroundColor = "#4CAF50";
+                canvas.classList.remove('cursor-move');
+                statusEl.textContent = "Goal position updated";
+            }
+        }
+        
+        function toggleObstacleMovement() {
+            isMovingObstacles = !isMovingObstacles;
+            
+            if (isMovingObstacles) {
+                // Exit goal repositioning mode if active
+                if (isRepositioningGoal) {
+                    toggleGoalRepositioning();
+                }
+                
+                moveObstaclesBtn.textContent = "Finish Moving";
+                moveObstaclesBtn.style.backgroundColor = "#FF9800";
+                canvas.classList.add('cursor-move');
+                
+                // Pause simulation if running
+                if (isRunning) {
+                    toggleSimulation();
+                }
+                
+                statusEl.textContent = "Click on an obstacle to move it";
+            } else {
+                moveObstaclesBtn.textContent = "Move Obstacles";
+                moveObstaclesBtn.style.backgroundColor = "#4CAF50";
+                canvas.classList.remove('cursor-move');
+                statusEl.textContent = "Obstacle positions updated";
+                
+                // Reset selected obstacle
+                selectedObstacle = null;
+            }
+        }
+        
+        function handleCanvasMouseDown(e) {
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+            
+            if (isRepositioningGoal) {
+                // Update goal position
+                goal.x = mouseX;
+                goal.y = mouseY;
+                
+                // Redraw
+                draw();
+                
+                // Exit repositioning mode
+                toggleGoalRepositioning();
+            } else if (isMovingObstacles) {
+                // Check if we clicked on an obstacle
+                for (let i = 0; i < obstacles.length; i++) {
+                    const obs = obstacles[i];
+                    if (mouseX >= obs.x && mouseX <= obs.x + obs.width &&
+                        mouseY >= obs.y && mouseY <= obs.y + obs.height) {
+                        // Select this obstacle
+                        selectedObstacle = i;
+                        // Calculate offset so the obstacle doesn't jump to cursor position
+                        dragOffset.x = mouseX - obs.x;
+                        dragOffset.y = mouseY - obs.y;
+                        break;
+                    }
+                }
+            }
+        }
+        
+        function handleCanvasMouseMove(e) {
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+            
+            if (isRepositioningGoal) {
+                // Preview goal position (temp update and redraw)
+                const originalX = goal.x;
+                const originalY = goal.y;
+                
+                goal.x = mouseX;
+                goal.y = mouseY;
+                draw();
+                
+                // Restore original position (we'll only commit on mousedown)
+                goal.x = originalX;
+                goal.y = originalY;
+            } else if (isMovingObstacles && selectedObstacle !== null) {
+                // Move the selected obstacle
+                const obs = obstacles[selectedObstacle];
+                
+                // Update position with offset
+                obs.x = mouseX - dragOffset.x;
+                obs.y = mouseY - dragOffset.y;
+                
+                // Keep obstacle within canvas bounds
+                obs.x = Math.max(0, Math.min(canvas.width - obs.width, obs.x));
+                obs.y = Math.max(0, Math.min(canvas.height - obs.height, obs.y));
+                
+                // Redraw
+                draw();
+            }
+        }
+        
+        function handleCanvasMouseUp(e) {
+            if (isMovingObstacles) {
+                selectedObstacle = null;
+            }
+        }
+        
+        function handleCanvasMouseLeave(e) {
+            if (isRepositioningGoal) {
+                // Redraw with the original goal position
+                draw();
+            }
+            
+            if (isMovingObstacles) {
+                selectedObstacle = null;
+            }
+        }
+        
+        function generateObstacles() {
+            obstacles = [];
+            const minSize = 20;
+            const maxSize = 50;
+            
+            // Clear existing obstacles
+            for (let i = 0; i < numObstacles; i++) {
+                let width = minSize + Math.random() * (maxSize - minSize);
+                let height = minSize + Math.random() * (maxSize - minSize);
+                let x, y;
+                let validPosition = false;
+                
+                // Try to find a valid position that doesn't overlap with the start or goal
+                while (!validPosition) {
+                    x = width / 2 + Math.random() * (canvas.width - width);
+                    y = height / 2 + Math.random() * (canvas.height - height);
+                    
+                    // Check distance from goal and start area
+                    const distToGoal = Math.sqrt(Math.pow(x - goal.x, 2) + Math.pow(y - goal.y, 2));
+                    const distToStart = Math.sqrt(Math.pow(x - startArea.x, 2) + Math.pow(y - startArea.y, 2));
+                    
+                    if (distToGoal > 70 && distToStart > 70) {
+                        validPosition = true;
+                    }
+                }
+                
+                obstacles.push({
+                    x: x - width / 2,
+                    y: y - height / 2,
+                    width: width,
+                    height: height
+                });
+            }
+        }
+        
+        function reset() {
+            // Stop simulation if running
+            if (isRunning) {
+                toggleSimulation();
+            }
+            
+            // Clear previous drones
+            drones = [];
+            
+            // Create new drones at the start area
+            for (let i = 0; i < numDrones; i++) {
+                // Position drones in a cluster around the start area
+                const angle = Math.random() * Math.PI * 2;
+                const distance = Math.random() * 30;
+                const x = startArea.x + distance * Math.cos(angle);
+                const y = startArea.y + distance * Math.sin(angle);
+                
+                drones.push({
+                    x: x,
+                    y: y,
+                    vx: 0,
+                    vy: 0,
+                    reachedGoal: false,
+                    pathHistory: [{x: x, y: y}] // Initialize with starting position
+                });
+            }
+            
+            statusEl.textContent = "Ready to start";
+            draw();
+        }
+        
+        function clearPaths() {
+            // Clear path history but maintain current positions
+            for (let drone of drones) {
+                drone.pathHistory = [{x: drone.x, y: drone.y}];
+            }
+            draw();
+        }
+        
+        function toggleSimulation() {
+            isRunning = !isRunning;
+            
+            if (isRunning) {
+                // Exit repositioning modes if active
+                if (isRepositioningGoal) {
+                    toggleGoalRepositioning();
+                }
+                if (isMovingObstacles) {
+                    toggleObstacleMovement();
+                }
+                
+                startBtn.textContent = "Pause";
+                statusEl.textContent = "Simulation running";
+                animate();
+            } else {
+                startBtn.textContent = "Resume";
+                statusEl.textContent = "Simulation paused";
+                cancelAnimationFrame(animationId);
+            }
+        }
+        
+        function animate() {
+            update();
+            draw();
+            
+            // Check if all drones have reached the goal
+            const allReached = drones.every(drone => drone.reachedGoal);
+            if (allReached) {
+                isRunning = false;
+                startBtn.textContent = "Start";
+                statusEl.textContent = "All drones reached the goal!";
+                return;
+            }
+            
+            if (isRunning) {
+                animationId = requestAnimationFrame(animate);
+            }
+        }
+        
+        function update() {
+            for (let i = 0; i < drones.length; i++) {
+                const drone = drones[i];
+                
+                // Skip drones that have already reached the goal
+                if (drone.reachedGoal) continue;
+                
+                // Check if drone has reached the goal
+                const distToGoal = Math.sqrt(Math.pow(drone.x - goal.x, 2) + Math.pow(drone.y - goal.y, 2));
+                if (distToGoal < 15) {
+                    drone.reachedGoal = true;
+                    drone.vx = 0;
+                    drone.vy = 0;
+                    continue;
+                }
+                
+                // Calculate forces
+                let fx = 0, fy = 0;
+                
+                // Attraction to goal (potential field)
+                const distToGoalSq = Math.pow(drone.x - goal.x, 2) + Math.pow(drone.y - goal.y, 2);
+                const goalDist = Math.sqrt(distToGoalSq);
+                fx += attractionStrength * (goal.x - drone.x) / goalDist;
+                fy += attractionStrength * (goal.y - drone.y) / goalDist;
+                
+                // Repulsion from other drones
+                for (let j = 0; j < drones.length; j++) {
+                    if (i !== j) {
+                        const otherDrone = drones[j];
+                        const dx = drone.x - otherDrone.x;
+                        const dy = drone.y - otherDrone.y;
+                        const distSq = dx * dx + dy * dy;
+                        
+                        // Only apply repulsion if drones are closer than minimum distance
+                        if (distSq < minDistance * minDistance) {
+                            const dist = Math.sqrt(distSq);
+                            // Avoid division by zero
+                            if (dist > 0.1) {
+                                const repulsionMagnitude = repulsionStrength / (dist * dist);
+                                fx += repulsionMagnitude * dx / dist;
+                                fy += repulsionMagnitude * dy / dist;
+                            }
+                        }
+                    }
+                }
+                
+                // Repulsion from obstacles
+                for (const obstacle of obstacles) {
+                    // Find the closest point on the obstacle to the drone
+                    const closestX = Math.max(obstacle.x, Math.min(drone.x, obstacle.x + obstacle.width));
+                    const closestY = Math.max(obstacle.y, Math.min(drone.y, obstacle.y + obstacle.height));
+                    
+                    const dx = drone.x - closestX;
+                    const dy = drone.y - closestY;
+                    const distSq = dx * dx + dy * dy;
+                    const dist = Math.sqrt(distSq);
+                    
+                    // Apply repulsion force if close to obstacle
+                    if (dist < 50) {
+                        // Avoid division by zero
+                        if (dist > 0.1) {
+                            const repulsionMagnitude = obstacleRepulsion / (dist * dist);
+                            fx += repulsionMagnitude * dx / dist;
+                            fy += repulsionMagnitude * dy / dist;
+                        }
+                    }
+                }
+                
+                // Update velocity
+                drone.vx += fx * 0.01;
+                drone.vy += fy * 0.01;
+                
+                // Limit speed
+                const speed = Math.sqrt(drone.vx * drone.vx + drone.vy * drone.vy);
+                if (speed > maxSpeed) {
+                    drone.vx = (drone.vx / speed) * maxSpeed;
+                    drone.vy = (drone.vy / speed) * maxSpeed;
+                }
+                
+                // Update position
+                drone.x += drone.vx;
+                drone.y += drone.vy;
+                
+                // Record position for path tracking
+                // Only add a point if it's significantly different from the last point
+                const lastPos = drone.pathHistory[drone.pathHistory.length - 1];
+                const positionChange = Math.sqrt(Math.pow(drone.x - lastPos.x, 2) + Math.pow(drone.y - lastPos.y, 2));
+                if (positionChange > 1) { // Minimum distance between path points (1px)
+                    drone.pathHistory.push({x: drone.x, y: drone.y});
+                    
+                    // Limit path history length
+                    if (drone.pathHistory.length > pathHistoryLength) {
+                        drone.pathHistory.shift();
+                    }
+                }
+                
+                // Boundary constraints
+                drone.x = Math.max(5, Math.min(canvas.width - 5, drone.x));
+                drone.y = Math.max(5, Math.min(canvas.height - 5, drone.y));
+            }
+        }
+        
+        function draw() {
+            // Clear canvas
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Draw background grid
+            drawGrid();
+            
+            // Draw start area
+            ctx.beginPath();
+            ctx.arc(startArea.x, startArea.y, 20, 0, Math.PI * 2);
+            ctx.fillStyle = 'rgba(0, 0, 255, 0.2)';
+            ctx.fill();
+            ctx.strokeStyle = 'blue';
+            ctx.stroke();
+            ctx.fillStyle = 'blue';
+            ctx.font = '12px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText('Start', startArea.x, startArea.y - 30);
+            
+            // Draw goal
+            ctx.beginPath();
+            ctx.arc(goal.x, goal.y, 15, 0, Math.PI * 2);
+            ctx.fillStyle = 'rgba(0, 255, 0, 0.3)';
+            ctx.fill();
+            ctx.strokeStyle = 'green';
+            ctx.stroke();
+            ctx.fillStyle = 'green';
+            ctx.fillText('Goal', goal.x, goal.y - 25);
+            
+            // Draw obstacles
+            for (let i = 0; i < obstacles.length; i++) {
+                const obstacle = obstacles[i];
+                
+                // Highlight selected obstacle in move mode
+                if (isMovingObstacles && selectedObstacle === i) {
+                    ctx.fillStyle = '#FF9800';
+                } else {
+                    ctx.fillStyle = '#444';
+                }
+                
+                ctx.fillRect(obstacle.x, obstacle.y, obstacle.width, obstacle.height);
+                
+                // Add a handle visual for obstacles when in move mode
+                if (isMovingObstacles) {
+                    ctx.beginPath();
+                    ctx.arc(obstacle.x + obstacle.width/2, obstacle.y + obstacle.height/2, 5, 0, Math.PI * 2);
+                    ctx.fillStyle = '#FFF';
+                    ctx.fill();
+                }
+            }
+            
+            // Draw drone paths first (so they appear behind drones)
+            for (let i = 0; i < drones.length; i++) {
+                const drone = drones[i];
+                const path = drone.pathHistory;
+                
+                if (path.length > 1) {
+                    // Calculate a color for this drone's path - different hues for different drones
+                    const hue = (i * 30) % 360; // Spread colors using HSL
+                    
+                    // Draw path with gradient opacity
+                    for (let j = 1; j < path.length; j++) {
+                        const opacity = (j / path.length) * pathOpacity;
+                        ctx.beginPath();
+                        ctx.moveTo(path[j-1].x, path[j-1].y);
+                        ctx.lineTo(path[j].x, path[j].y);
+                        ctx.strokeStyle = `hsla(${hue}, 100%, 50%, ${opacity})`;
+                        ctx.lineWidth = 2;
+                        ctx.stroke();
+                    }
+                }
+            }
+            
+            // Draw drones
+            for (let i = 0; i < drones.length; i++) {
+                const drone = drones[i];
+                ctx.beginPath();
+                ctx.arc(drone.x, drone.y, 5, 0, Math.PI * 2);
+                
+                if (drone.reachedGoal) {
+                    ctx.fillStyle = 'green';
+                } else {
+                    // Use the same color as the path for each drone
+                    const hue = (i * 30) % 360;
+                    ctx.fillStyle = `hsl(${hue}, 100%, 50%)`;
+                }
+                
+                ctx.fill();
+                
+                // Draw velocity vector
+                if (!drone.reachedGoal) {
+                    ctx.beginPath();
+                    ctx.moveTo(drone.x, drone.y);
+                    ctx.lineTo(drone.x + drone.vx * 5, drone.y + drone.vy * 5);
+                    ctx.strokeStyle = 'rgba(255, 0, 0, 0.5)';
+                    ctx.stroke();
+                }
+            }
+            
+            // Display simulation mode status
+            if (isRepositioningGoal) {
+                ctx.fillStyle = '#FF9800';
+                ctx.font = '14px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText('Click anywhere to place the goal', canvas.width/2, 30);
+            } else if (isMovingObstacles) {
+                ctx.fillStyle = '#FF9800';
+                ctx.font = '14px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText('Click on an obstacle to move it', canvas.width/2, 30);
+                
+                if (selectedObstacle !== null) {
+                    ctx.fillText('Drag to reposition - click elsewhere when done', canvas.width/2, 50);
+                }
+            }
+            
+            let reachedCount = drones.filter(d => d.reachedGoal).length;
+            ctx.fillStyle = '#000';
+            ctx.font = '14px Arial';
+            ctx.textAlign = 'left';
+            ctx.fillText(`Drones reached goal: ${reachedCount}/${drones.length}`, 10, 20);
+            
+            // Copyright notice also in canvas
+            ctx.textAlign = 'right';
+            ctx.font = '10px Arial';
+            ctx.fillStyle = 'rgba(0,0,0,0.5)';
+            ctx.fillText('© 2025 @HarisKhan', canvas.width - 10, canvas.height - 10);
+        }
+        
+        function drawGrid() {
+            const gridSize = 20;
+            ctx.strokeStyle = 'rgba(200, 200, 200, 0.3)';
+            ctx.lineWidth = 0.5;
+            
+            // Vertical lines
+            for (let x = 0; x <= canvas.width; x += gridSize) {
+                ctx.beginPath();
+                ctx.moveTo(x, 0);
+                ctx.lineTo(x, canvas.height);
+                ctx.stroke();
+            }
+            
+            // Horizontal lines
+            for (let y = 0; y <= canvas.height; y += gridSize) {
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(canvas.width, y);
+                ctx.stroke();
+            }
+        }
+    </script>
+</body>
+</html>
